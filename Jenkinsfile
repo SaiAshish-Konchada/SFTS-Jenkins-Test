@@ -4,23 +4,23 @@ pipeline {
         stage('SCM checkout') {
             steps {
                 deleteDir() // Clean workspace
-                git branch: 'main', url: 'https://github.com/SaiAshish-Konchada/SFTS-Jenkins-Test.git'
+                checkout scm
             }
         }
         stage('Docker image build') {
             steps {
                 script {
-                    def frontendImageName = 'saiashishkonchada/secure-file-transfer-frontend'
+                    def frontendImageName = "saiashishkonchada/secure-file-transfer-frontend:${BUILD_NUMBER}"
                     def frontendBuildContext = 'app'
                     def frontendDockerfile = 'Dockerfile'
                     echo "Building Docker image ${frontendImageName} from ${frontendDockerfile} in ${frontendBuildContext}"
-                    docker.image().build("-t ${frontendImageName} -f ${frontendDockerfile} ${frontendBuildContext}")
+                    docker.image(frontendImageName).build(context: frontendBuildContext, dockerfile: frontendDockerfile)
 
-                    def backendImageName = 'saiashishkonchada/secure-file-transfer-backend'
+                    def backendImageName = "saiashishkonchada/secure-file-transfer-backend:${BUILD_NUMBER}"
                     def backendBuildContext = 'postgres'
                     def backendDockerfile = 'Dockerfile'
                     echo "Building Docker image ${backendImageName} from ${backendDockerfile} in ${backendBuildContext}"
-                    docker.image().build("-t ${backendImageName} -f ${backendDockerfile} ${backendBuildContext}")
+                    docker.image(backendImageName).build(context: backendBuildContext, dockerfile: backendDockerfile)
                 }
             }
         }
@@ -28,8 +28,8 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'dockerhub', variable: 'DOCKERHUB_CREDENTIALS')]) {
                     sh "echo \${DOCKERHUB_CREDENTIALS} | docker login -u saiashishkonchada --password-stdin"
-                    sh "docker push saiashishkonchada/secure-file-transfer-frontend"
-                    sh "docker push saiashishkonchada/secure-file-transfer-backend"
+                    sh "docker push saiashishkonchada/secure-file-transfer-frontend:${BUILD_NUMBER}"
+                    sh "docker push saiashishkonchada/secure-file-transfer-backend:${BUILD_NUMBER}"
                 }
             }
         }
