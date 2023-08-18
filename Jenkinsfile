@@ -1,52 +1,50 @@
 pipeline {
     agent any
-
     stages {
-        stage('Checkout') {
+        stage ('SCM checkout') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/SaiAshish-Konchada/SFTS-Jenkins-Test.git'
             }
         }
-
-        stage('Build Flask Frontend') {
+        stage ('docker image build') {
             steps {
                 script {
-                    def flaskImage = docker.build('flask-frontend', './app')
+                    def imageName = 'saiashishkonchada/secure-file-tranfer-image'
+                    docker.image(imageName).build("-t $imageName .")
                 }
             }
         }
-
-        stage('Build and Start PostgreSQL') {
+        stage ('docker login') {
             steps {
-                script {
-                    def postgresImage = docker.image('postgres:13').withRun('--name postgres -e POSTGRES_DB=secure_file_system -e POSTGRES_USER=ruegen -e POSTGRES_PASSWORD=ruegen -p 5432:5432') {
-                        sleep 5
-                    }
+                withCredentials([string(credentialsId: 'dockerhub', variable: 'DOCKERHUB_CREDENTIALS')]) {
+                    sh "echo \${DOCKERHUB_CREDENTIALS} | docker login -u saiashishkonchada --password-stdin"
                 }
             }
         }
-
-        stage('Deploy') {
+        stage ('docker image push') {
             steps {
                 script {
-                    def flaskContainer = docker.container(flaskImage.id).start()
-                    def testResult = sh(script: 'curl -s http://localhost:5000', returnStatus: true)
-                    if (testResult != 0) {
-                        error "Frontend test failed"
-                    }
-                    // Deploy using docker-compose
+                    def imageName = 'saiashishkonchada/secure-file-transfer-image'
+                    docker.image(imageName).push()
+                }
+            }
+        }
+        stage ('get the confirmation from user') {
+            steps {
+                input 'Do you want to deploy this application?'
+            }
+        }
+        stage ('Deploy using Docker Compose') {
+            steps {
+                script {
                     sh 'docker-compose -f docker-compose.yml up -d'
                 }
             }
         }
     }
-
     post {
         always {
             script {
-                def docker = [:] // Define the docker object here
-                docker.image('flask-frontend').remove()
-                docker.image('postgres:13').stop().remove(force: true)
                 sh 'docker-compose -f docker-compose.yml down'
             }
         }
