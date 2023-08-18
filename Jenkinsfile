@@ -16,8 +16,8 @@ pipeline {
                     def frontendImageName = "saiashishkonchada/secure-file-transfer-frontend:${BUILD_NUMBER}"
                     def backendImageName = "saiashishkonchada/secure-file-transfer-backend:${BUILD_NUMBER}"
 
-                    docker.image(frontendImageName).build(context: 'app', dockerfile: 'Dockerfile')
-                    docker.image(backendImageName).build(context: 'postgres', dockerfile: 'Dockerfile')
+                    docker.image(frontendImageName).build()
+                    docker.image(backendImageName).build()
 
                     docker.withRegistry('', DOCKERHUB_CREDENTIALS) {
                         docker.image(frontendImageName).push()
