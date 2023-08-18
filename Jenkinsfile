@@ -3,31 +3,33 @@ pipeline {
     stages {
         stage('SCM checkout') {
             steps {
-                script {
-                    // Clean workspace before checking out
-                    deleteDir()
-                    git branch: 'main', url: 'https://github.com/SaiAshish-Konchada/SFTS-Jenkins-Test.git'
-                }
+                deleteDir() // Clean workspace
+                git branch: 'main', url: 'https://github.com/SaiAshish-Konchada/SFTS-Jenkins-Test.git'
             }
         }
         stage('Docker image build') {
             steps {
                 script {
-                    def imageName = 'saiashishkonchada/secure-file-transfer-image'
-                    docker.build(imageName, '.')
+                    def frontendImageName = 'saiashishkonchada/secure-file-transfer-frontend'
+                    def frontendBuildContext = 'app'
+                    def frontendDockerfile = 'Dockerfile'
+                    echo "Building Docker image ${frontendImageName} from ${frontendDockerfile} in ${frontendBuildContext}"
+                    docker.build(frontendImageName, context: frontendBuildContext, dockerfile: frontendDockerfile)
+
+                    def backendImageName = 'saiashishkonchada/secure-file-transfer-backend'
+                    def backendBuildContext = 'postgres'
+                    def backendDockerfile = 'Dockerfile'
+                    echo "Building Docker image ${backendImageName} from ${backendDockerfile} in ${backendBuildContext}"
+                    docker.build(backendImageName, context: backendBuildContext, dockerfile: backendDockerfile)
                 }
             }
         }
         stage('Docker login and push') {
             steps {
-                script {
-                    def imageName = 'saiashishkonchada/secure-file-transfer-image'
-                    withCredentials([string(credentialsId: 'dockerhub', variable: 'DOCKERHUB_CREDENTIALS')]) {
-                        docker.withRegistry('https://index.docker.io/v1/', 'dockerhub') {
-                            sh "echo \${DOCKERHUB_CREDENTIALS} | docker login -u saiashishkonchada --password-stdin"
-                            docker.image(imageName).push()
-                        }
-                    }
+                withCredentials([string(credentialsId: 'dockerhub', variable: 'DOCKERHUB_CREDENTIALS')]) {
+                    sh "echo \${DOCKERHUB_CREDENTIALS} | docker login -u saiashishkonchada --password-stdin"
+                    sh "docker push saiashishkonchada/secure-file-transfer-frontend"
+                    sh "docker push saiashishkonchada/secure-file-transfer-backend"
                 }
             }
         }
@@ -38,9 +40,7 @@ pipeline {
         }
         stage('Deploy using Docker Compose') {
             steps {
-                script {
-                    sh 'docker-compose -f docker-compose.yml up -d'
-                }
+                sh 'docker-compose -f docker-compose.yml up -d'
             }
         }
     }
