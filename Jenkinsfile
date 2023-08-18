@@ -44,6 +44,7 @@ pipeline {
     post {
         always {
             script {
+                def docker = [:] // Define the docker object here
                 docker.image('flask-frontend').remove()
                 docker.image('postgres:13').stop().remove(force: true)
                 sh 'docker-compose -f docker-compose.yml down'
