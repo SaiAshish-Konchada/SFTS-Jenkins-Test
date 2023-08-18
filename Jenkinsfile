@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub')
+    }
     stages {
         stage('SCM checkout') {
             steps {
@@ -7,29 +10,19 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Docker image build') {
+        stage('Build and Push Docker Images') {
             steps {
                 script {
                     def frontendImageName = "saiashishkonchada/secure-file-transfer-frontend:${BUILD_NUMBER}"
-                    def frontendBuildContext = 'app'
-                    def frontendDockerfile = 'Dockerfile'
-                    echo "Building Docker image ${frontendImageName} from ${frontendDockerfile} in ${frontendBuildContext}"
-                    docker.image(frontendImageName).build(context: "${frontendBuildContext}/", dockerfile: "${frontendBuildContext}/${frontendDockerfile}")
-
                     def backendImageName = "saiashishkonchada/secure-file-transfer-backend:${BUILD_NUMBER}"
-                    def backendBuildContext = 'postgres'
-                    def backendDockerfile = 'Dockerfile'
-                    echo "Building Docker image ${backendImageName} from ${backendDockerfile} in ${backendBuildContext}"
-                    docker.image(backendImageName).build(context: "${backendBuildContext}/", dockerfile: "${backendBuildContext}/${backendDockerfile}")
-                }
-            }
-        }
-        stage('Docker login and push') {
-            steps {
-                withCredentials([string(credentialsId: 'dockerhub', variable: 'DOCKERHUB_CREDENTIALS')]) {
-                    sh "echo \${DOCKERHUB_CREDENTIALS} | docker login -u saiashishkonchada --password-stdin"
-                    sh "docker push saiashishkonchada/secure-file-transfer-frontend:${BUILD_NUMBER}"
-                    sh "docker push saiashishkonchada/secure-file-transfer-backend:${BUILD_NUMBER}"
+
+                    docker.image(frontendImageName).build(context: 'app', dockerfile: 'Dockerfile')
+                    docker.image(backendImageName).build(context: 'postgres', dockerfile: 'Dockerfile')
+
+                    docker.withRegistry('', DOCKERHUB_CREDENTIALS) {
+                        docker.image(frontendImageName).push()
+                        docker.image(backendImageName).push()
+                    }
                 }
             }
         }
