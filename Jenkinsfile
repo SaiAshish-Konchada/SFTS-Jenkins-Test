@@ -14,13 +14,14 @@ pipeline {
                     def frontendBuildContext = 'app'
                     def frontendDockerfile = 'Dockerfile'
                     echo "Building Docker image ${frontendImageName} from ${frontendDockerfile} in ${frontendBuildContext}"
-                    docker.image(frontendImageName).build(context: frontendBuildContext, dockerfile: frontendDockerfile)
+                    docker.image(frontendImageName).build(context: frontendBuildContext, dockerfile: 'Dockerfile', buildArgs: ['ARG1': 'value1','ARG2': 'value2'])
 
                     def backendImageName = "saiashishkonchada/secure-file-transfer-backend:${BUILD_NUMBER}"
                     def backendBuildContext = 'postgres'
                     def backendDockerfile = 'Dockerfile'
                     echo "Building Docker image ${backendImageName} from ${backendDockerfile} in ${backendBuildContext}"
-                    docker.image(backendImageName).build(context: backendBuildContext, dockerfile: backendDockerfile)
+                    docker.image(backendImageName).build(context: backendBuildContext, dockerfile: 'Dockerfile', buildArgs: ['ARG1': 'value1','ARG2': 'value2'])
+
                 }
             }
         }
