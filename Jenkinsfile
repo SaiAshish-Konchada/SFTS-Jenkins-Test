@@ -1,40 +1,42 @@
 pipeline {
     agent any
     stages {
-        stage ('SCM checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/SaiAshish-Konchada/SFTS-Jenkins-Test.git'
-            }
-        }
-        stage ('docker image build') {
+        stage('SCM checkout') {
             steps {
                 script {
-                    def imageName = 'saiashishkonchada/secure-file-tranfer-image'
-                    docker.image(imageName).build("-t $imageName .")
+                    // Clean workspace before checking out
+                    deleteDir()
+                    git branch: 'main', url: 'https://github.com/SaiAshish-Konchada/SFTS-Jenkins-Test.git'
                 }
             }
         }
-        stage ('docker login') {
-            steps {
-                withCredentials([string(credentialsId: 'dockerhub', variable: 'DOCKERHUB_CREDENTIALS')]) {
-                    sh "echo \${DOCKERHUB_CREDENTIALS} | docker login -u saiashishkonchada --password-stdin"
-                }
-            }
-        }
-        stage ('docker image push') {
+        stage('Docker image build') {
             steps {
                 script {
                     def imageName = 'saiashishkonchada/secure-file-transfer-image'
-                    docker.image(imageName).push()
+                    docker.build(imageName, '.')
                 }
             }
         }
-        stage ('get the confirmation from user') {
+        stage('Docker login and push') {
+            steps {
+                script {
+                    def imageName = 'saiashishkonchada/secure-file-transfer-image'
+                    withCredentials([string(credentialsId: 'dockerhub', variable: 'DOCKERHUB_CREDENTIALS')]) {
+                        docker.withRegistry('https://index.docker.io/v1/', 'dockerhub') {
+                            sh "echo \${DOCKERHUB_CREDENTIALS} | docker login -u saiashishkonchada --password-stdin"
+                            docker.image(imageName).push()
+                        }
+                    }
+                }
+            }
+        }
+        stage('Get confirmation from user') {
             steps {
                 input 'Do you want to deploy this application?'
             }
         }
-        stage ('Deploy using Docker Compose') {
+        stage('Deploy using Docker Compose') {
             steps {
                 script {
                     sh 'docker-compose -f docker-compose.yml up -d'
