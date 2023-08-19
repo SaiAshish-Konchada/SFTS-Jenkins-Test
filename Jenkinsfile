@@ -1,46 +1,43 @@
 pipeline {
     agent any
-    environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-password')
-    }
     stages {
-        stage('SCM checkout') {
+        stage ('SCM checkout') {
             steps {
-                deleteDir() // Clean workspace
-                checkout scm
+                git branch: 'main', url: 'https://github.com/SaiAshish-Konchada/SFTS-Jenkins-Test.git'
             }
         }
-        stage('Build and Push Docker Images') {
+        stage ('docker image build') {
             steps {
                 script {
-                    def frontendImageName = "saiashishkonchada/secure-file-transfer-frontend:${BUILD_NUMBER}"
-                    def backendImageName = "saiashishkonchada/secure-file-transfer-backend:${BUILD_NUMBER}"
-
-                    docker.image(frontendImageName).build()
-                    docker.image(backendImageName).build()
-
-                    docker.withRegistry('', DOCKERHUB_CREDENTIALS) {
-                        docker.image(frontendImageName).push()
-                        docker.image(backendImageName).push()
+                    docker.image('docker/compose:1.29.2').inside('-v /var/run/docker.sock:/var/run/docker.sock') {
+                        sh 'docker-compose build'
                     }
                 }
             }
         }
-        stage('Get confirmation from user') {
+        stage ('docker login') {
+            steps {
+                sh 'echo dckr_pat_TFcEvVfbxV-jpQQgyWX1wH0vqvQ | /usr/bin/docker login -u saiashishkonchada --password-stdin'
+            }
+        }
+        stage ('docker image push') {
+            steps {
+                sh 'docker image push saiashishkonchada/securefrontend'
+            }
+        }
+        stage ('get the confirmation from user') {
             steps {
                 input 'Do you want to deploy this application?'
             }
         }
-        stage('Deploy using Docker Compose') {
+        stage ('remove existing service') {
             steps {
-                sh 'docker-compose -f docker-compose.yml up -d'
+                sh 'docker-compose down'
             }
         }
-    }
-    post {
-        always {
-            script {
-                sh 'docker-compose -f docker-compose.yml down'
+        stage ('create docker service') {
+            steps {
+                sh 'docker-compose up -d'
             }
         }
     }
