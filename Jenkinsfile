@@ -8,13 +8,9 @@ pipeline {
         }
         stage ('docker image build') {
             steps {
-                script {
-                    docker.image('docker/compose:1.29.2').inside('-v /var/run/docker.sock:/var/run/docker.sock') {
                         sh 'docker-compose build'
                     }
-                }
-            }
-        }
+        }    
         stage ('docker login') {
             steps {
                 sh 'echo dckr_pat_TFcEvVfbxV-jpQQgyWX1wH0vqvQ | /usr/bin/docker login -u saiashishkonchada --password-stdin'
